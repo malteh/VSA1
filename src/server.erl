@@ -1,23 +1,36 @@
 -module(server).
--export([start/0]).
+-export([start/0, name/0]).
 
 % Globale "Variablen"
 -define(Config,  '../config/server.cfg').
 -define(Logfile, '../logs/NServer.log').
+-define(Name, servername).
 
-% start server
+%E: start server
 start() ->
-	readConfig(),
+	log("Server gestartet"),
+	receive
+		stop -> stop()
+	end
+.%
+
+stop() ->
+	log("Server gestoppt"),
 	werkzeug:logstop()
 .%
 
 log(Text) ->
-	werkzeug:logging(?Logfile, Text)
+	TextNewline = io_lib:format("~s~n", [Text]),
+	werkzeug:logging(?Logfile, TextNewline)
 .%
 
 readConfig() ->
 	{ok, ConfigList} = file:consult(?Config),
-	{ok, Server} = werkzeug:get_config_value(servername, ConfigList),
-	S = io_lib:format("Hallo ~s~n", [Server]),
-	log(S)
+	ConfigList
+.%
+
+%E: Servername aus Config auslesen
+name() ->
+	{ok, Name} = werkzeug:get_config_value(?Name, readConfig()),
+	Name
 .%
