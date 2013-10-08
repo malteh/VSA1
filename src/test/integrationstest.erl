@@ -11,11 +11,10 @@ start() ->
 
 test_start_stop_server() ->
 	Server = spawn(fun() -> server:start() end),
-	register(server:name(), Server),
 	Status1 = process_info(Server),
 	if Status1 /= undefined ->
 		log("test_start_stop_server: gestartet"),
-		Server ! stop,
+		server:name() ! stop,
 		timer:sleep(100),
 		Status2 = process_info(Server),
 		if Status2 == undefined ->

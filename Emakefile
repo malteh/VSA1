@@ -1,1 +1,1 @@
-{"src/*", [debug_info, {outdir, "bin"}, {i, "include"}]}.
+{"src/*/*", [debug_info, {outdir, "bin"}, {i, "include"}]}.

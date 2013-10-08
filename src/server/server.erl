@@ -4,19 +4,29 @@
 % Globale "Variablen"
 -define(Config,  '../config/server.cfg').
 -define(Logfile, '../logs/NServer.log').
--define(Name, servername).
 
 %E: start server
 start() ->
+	register(server:name(), self()),
+	global:register_name(server:name(), self()),
 	log("Server gestartet"),
+	loop()	
+.%
+
+loop() ->
 	receive
-		stop -> stop()
+		{hallo, PID} ->
+			PID ! hallo,
+			loop();
+		stop ->
+			stop()
 	end
 .%
 
 stop() ->
 	log("Server gestoppt"),
-	werkzeug:logstop()
+	werkzeug:logstop(),
+	halt()
 .%
 
 log(Text) ->
@@ -31,6 +41,6 @@ readConfig() ->
 
 %E: Servername aus Config auslesen
 name() ->
-	{ok, Name} = werkzeug:get_config_value(?Name, readConfig()),
+	{ok, Name} = werkzeug:get_config_value(servername, readConfig()),
 	Name
 .%
