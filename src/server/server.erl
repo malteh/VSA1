@@ -15,8 +15,20 @@ start() ->
 
 loop() ->
 	receive
-		{hallo, PID} ->
-			PID ! hallo,
+		{getmessages, PID} ->
+			log("getmessages empfangen"),
+			Number = 1,
+			Nachricht = "",
+			Terminated = true,
+			PID ! {reply, Number, Nachricht, Terminated},
+			loop();
+		{dropmessage, {Nachricht, Number}} ->
+			log("dropmessage empfangen" ++ Nachricht ++ integer_to_list(Number)),
+			loop();
+		{getmsgid, PID} ->
+			log("getmsgid empfangen"),
+			Number = 1,
+			PID ! {nid, Number},
 			loop();
 		stop ->
 			stop()
