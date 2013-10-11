@@ -1,5 +1,5 @@
 -module(server).
--export([start/0, name/0]).
+-export([start/0, name/0, config_file/0]).
 
 % Globale "Variablen"
 -define(Config,  '../config/server.cfg').
@@ -17,19 +17,21 @@ start() ->
 
 loop(Nnr, Queuestruktur, Clientliste) ->
 	receive
-		{getmessages, PID} ->
+		{getmessages, ClientPID} ->
 			log("getmessages empfangen"),
-			{Letzte_nnr, Clientliste_neu} = clientverwalter:letzte_nnr(PID, Clientliste),
-			{Nnr_neu, Nachricht, Terminated} = queueverwalter:hole_nachricht(Letzte_nnr, Queuestruktur),
-			PID ! {reply, Nnr_neu, Nachricht, Terminated},
+			Letzte_nnr = clientverwalter:letzte_nnr(ClientPID, Clientliste),
+			{Nnr_neu, Nachricht, Terminated} = queueverwalter:naechste_nachricht(Letzte_nnr, Queuestruktur),
+			ClientPID ! {reply, Nnr_neu, Nachricht, Terminated},
+			Clientliste_neu = clientverwalter:aktualisiere(ClientPID, Nnr_neu, Clientliste),
 			loop(Nnr, Queuestruktur, Clientliste_neu);
 		{dropmessage, {Nachricht, Number}} ->
 			log("dropmessage empfangen" ++ Nachricht ++ integer_to_list(Number)),
 			Queuestruktur_neu = queueverwalter:nachricht_einfuegen(Number, Nachricht, Queuestruktur),
 			loop(Nnr, Queuestruktur_neu, Clientliste);
-		{getmsgid, PID} ->
+		{getmsgid, ClientPID} ->
 			log("getmsgid empfangen"),
-			PID ! {nid, Nnr},
+			ClientPID ! {nid, Nnr},
+			log("getmsgid: " ++ integer_to_list(Nnr)),
 			loop(nnr_erhoehen(Nnr), Queuestruktur, Clientliste);
 		stop ->
 			stop()
@@ -53,13 +55,12 @@ log(Text) ->
 	werkzeug:logging(?Logfile, TextNewline)
 .%
 
-readConfig() ->
-	{ok, ConfigList} = file:consult(?Config),
-	ConfigList
+config_file() ->
+	?Config
 .%
 
 %E: Servername aus Config auslesen
 name() ->
-	{ok, Name} = werkzeug:get_config_value(servername, readConfig()),
+	{ok, Name} = werkzeug:get_config_value(servername, tools:read_config(?Config)),
 	Name
 .%

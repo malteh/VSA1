@@ -19,10 +19,10 @@ start_one() ->
 
 %======================================
 
-start_multi(0) -> halt();
+start_multi(0) -> io:format("asd",[]);%halt();
 start_multi(Number) ->
 	Name = "Client" ++ integer_to_list(Number),
-	start(Name),
+	spawn(fun() -> start(Name) end),
 	start_multi(Number-1)
 .%
 
@@ -34,8 +34,8 @@ start(Name) ->
 .%
 
 loop(Name, Server) ->
-	leser:start(Name, Server),
-	redakteur:start(Name, Server)
+	redakteur:start(Name, Server),
+	leser:start(Name, Server)
 .%
 
 stop(Name) ->
@@ -44,7 +44,7 @@ stop(Name) ->
 .%
 
 server_pid() ->
-	ConfigList = readConfig(),
+	ConfigList = tools:read_config(?Config),
 	{ok, Servername} = werkzeug:get_config_value(servername, ConfigList),
 	{ok, Serverhost} = werkzeug:get_config_value(serverhost, ConfigList),
 	Host = list_to_atom(atom_to_list(Servername) ++ "@" ++ Serverhost),
@@ -52,14 +52,9 @@ server_pid() ->
 	{Servername, Host}
 .%
 
-readConfig() ->
-	{ok, ConfigList} = file:consult(?Config),
-	ConfigList
-.%
-
 log(Prefix, Text) ->
 	TextNewline = io_lib:format("~s:~s~n", [Prefix, Text]),
-	Logfile = io_lib:format("~s.log", [Prefix]),
+	Logfile = io_lib:format("../logs/~s.log", [Prefix]),
 	werkzeug:logging(Logfile, TextNewline)
 .%
 
