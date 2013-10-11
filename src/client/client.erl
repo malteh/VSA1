@@ -1,5 +1,5 @@
 -module(client).
--export([start_one/0, start_multiple/0]).
+-export([start_one/0, start_multi/0, log/2]).
 
 % Globale "Variablen"
 -define(Config,  '../config/client.cfg').
@@ -8,56 +8,38 @@
 % EXPORTED ============================
 
 % start multiple clients
-start_multiple() ->
-	start_multiple(5)
+start_multi() ->
+	start_multi(5)
 .%
 
 % start one client
 start_one() ->
-	start_multiple(1)
+	start_multi(1)
 .%
 
 %======================================
 
-start_multiple(0) -> halt();
-start_multiple(Number) ->
+start_multi(0) -> halt();
+start_multi(Number) ->
 	Name = "Client" ++ integer_to_list(Number),
 	start(Name),
-	start_multiple(Number-1)
+	start_multi(Number-1)
 .%
 
-start(Clientname) ->
-	log(Clientname, "Client gestartet"),
+start(Name) ->
+	log(Name, "Client gestartet"),
 	Server = server_pid(),
-	loop(Clientname, Server),
-	stop(Clientname)
+	loop(Name, Server),
+	stop(Name)
 .%
 
-loop(Clientname, Server) ->
-	% getmessages
-	Server ! {getmessages, self()},
-	log(Clientname, "getmessages gesendet"),
-	receive
-		{reply, Number1, Nachricht, Terminated} ->
-			log(Clientname, "reply" ++ integer_to_list(Number1) ++ Nachricht ++ atom_to_list(Terminated))
-	end,
-	
-	% getmsgid
-	Server ! {getmsgid, self()},
-	log(Clientname, "getmsgid gesendet"),
-	receive
-		{nid, Number2} ->
-			log(Clientname, "nid empfangen" ++ integer_to_list(Number2))
-	end,
-	
-	% dropmessage
-	{Nachricht1, Number} = {"Hallo", 1},
-	Server ! {dropmessage, {Nachricht1, Number}},
-	log(Clientname, "dropmessage gesendet")
+loop(Name, Server) ->
+	leser:start(Name, Server),
+	redakteur:start(Name, Server)
 .%
 
-stop(Clientname) ->
-	log(Clientname, "Client gestoppt"),
+stop(Name) ->
+	log(Name, "Client gestoppt"),
 	werkzeug:logstop()
 .%
 
