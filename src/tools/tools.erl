@@ -1,5 +1,5 @@
 -module(tools).
--export([now_milliseconds/0, now_seconds/0, read_config/1]).
+-export([now_milliseconds/0, now_seconds/0, read_config/1, contains/2]).
 
 now_milliseconds() ->
 	K = 1000,
@@ -15,4 +15,9 @@ now_seconds() ->
 read_config(Config) ->
 	{ok, ConfigList} = file:consult(Config),
 	ConfigList
+.%
+
+contains([], _) -> false;
+contains([Elem|_], Elem) -> true;
+contains([_|Tail],Elem ) -> contains(Tail, Elem)
 .%

@@ -1,9 +1,14 @@
 -module(redakteur).
 
--export([start/2]).
+-export([start/3]).
+-define(Else, true).
 
-start(Name, Server) ->
-	client:log(Name, " ist jetzt im Redakteurmodus"),
+start(Name, Server, Anzahl) ->
+	start(Name, Server, Anzahl, [])
+.%
+
+start(Name, Server, Anzahl, Gesendete) ->
+	client:log(Name, ": Redakteurmodus"),
 	
 	% getmsgid
 	Server ! {getmsgid, self()},
@@ -13,9 +18,15 @@ start(Name, Server) ->
 			client:log(Name, "nid empfangen" ++ integer_to_list(Number))
 	end,
 	
-	% dropmessage
-	Nachricht = Name ++ "Hallo",
-	Server ! {dropmessage, {Nachricht, Number}},
-	client:log(Name, "dropmessage gesendet")
+	if (Anzahl =:= 0) ->
+		client:log(Name, integer_to_list(Number) ++ ". Nachricht vergessen zu senden *****"),
+		Gesendete;
+	?Else ->
+		% dropmessage
+		Nachricht = "-" ++ Name ++ "Hallo",
+		Server ! {dropmessage, {integer_to_list(Number) ++ Nachricht, Number}},
+		client:log(Name, "dropmessage gesendet"),
+		start(Name, Server, Anzahl-1, Gesendete ++ [Number])
+	end
 .%
 

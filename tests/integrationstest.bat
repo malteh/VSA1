@@ -1,3 +1,4 @@
+cd ..
 rm logs/*.log
 erl -make
 cd bin

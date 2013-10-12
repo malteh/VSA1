@@ -8,7 +8,7 @@ erzeuge_liste() ->
 
 letzte_nnr(_, []) -> 0;
 letzte_nnr(ClientPID, Clientliste) ->
-	{ClientPID, LetzteNr, Timeout} = search_PID(ClientPID, Clientliste),
+	{_, LetzteNr, Timeout} = search_PID(ClientPID, Clientliste),
 	Now = tools:now_seconds(),
 	if (Now > Timeout) ->
 		0;

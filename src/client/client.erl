@@ -29,13 +29,13 @@ start_multi(Number) ->
 start(Name) ->
 	log(Name, "Client gestartet"),
 	Server = server_pid(),
-	loop(Name, Server),
+	loop(Name, Server, []),
 	stop(Name)
 .%
 
-loop(Name, Server) ->
-	redakteur:start(Name, Server),
-	leser:start(Name, Server)
+loop(Name, Server, Nachrichtennummern) ->
+	Neue_nummern = redakteur:start(Name, Server, anzahl()),
+	leser:start(Name, Server, Nachrichtennummern ++ Neue_nummern)
 .%
 
 stop(Name) ->
@@ -58,3 +58,8 @@ log(Prefix, Text) ->
 	werkzeug:logging(Logfile, TextNewline)
 .%
 
+anzahl() ->
+	ConfigList = tools:read_config(?Config),
+	{ok, Anzahl} = werkzeug:get_config_value(anzahl, ConfigList),
+	Anzahl
+.%

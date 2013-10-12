@@ -1,5 +1,5 @@
 -module(server).
--export([start/0, name/0, config_file/0]).
+-export([start/0, name/0, config_file/0, log/1]).
 
 % Globale "Variablen"
 -define(Config,  '../config/server.cfg').
@@ -20,13 +20,14 @@ loop(Nnr, Queuestruktur, Clientliste) ->
 		{getmessages, ClientPID} ->
 			log("getmessages empfangen"),
 			Letzte_nnr = clientverwalter:letzte_nnr(ClientPID, Clientliste),
+			log(integer_to_list(Letzte_nnr)),
 			{Nnr_neu, Nachricht, Terminated} = queueverwalter:naechste_nachricht(Letzte_nnr, Queuestruktur),
 			ClientPID ! {reply, Nnr_neu, Nachricht, Terminated},
 			Clientliste_neu = clientverwalter:aktualisiere(ClientPID, Nnr_neu, Clientliste),
 			loop(Nnr, Queuestruktur, Clientliste_neu);
-		{dropmessage, {Nachricht, Number}} ->
-			log("dropmessage empfangen" ++ Nachricht ++ integer_to_list(Number)),
-			Queuestruktur_neu = queueverwalter:nachricht_einfuegen(Number, Nachricht, Queuestruktur),
+		{dropmessage, {Text, Number}} ->
+			log("dropmessage: " ++ Text),
+			Queuestruktur_neu = queueverwalter:nachricht_einfuegen(Number, Text, Queuestruktur),
 			loop(Nnr, Queuestruktur_neu, Clientliste);
 		{getmsgid, ClientPID} ->
 			log("getmsgid empfangen"),
@@ -50,6 +51,7 @@ stop() ->
 	halt()
 .%
 
+%E:
 log(Text) ->
 	TextNewline = io_lib:format("~s~n", [Text]),
 	werkzeug:logging(?Logfile, TextNewline)
