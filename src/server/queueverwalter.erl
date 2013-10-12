@@ -40,42 +40,50 @@ hbq_pruefen(Struktur) ->
 	{HBQ, DLQ} = Struktur,
 	
 	MaxDLQsize = dlqlimit(),
-	%if (length(HBQ) > MaxDLQsize/2) ->
-	%	erzeugeFehlernachricht(HBQ, DLQ);
-	%?Else ->
-	%	uebertrage(HBQ, DLQ)
-	%end
-	
-	{HBQ, DLQ}
+	if (length(HBQ) > MaxDLQsize/2) ->
+		erzeugeFehlernachricht(HBQ, DLQ);
+	?Else ->
+		uebertrage(HBQ, DLQ)
+	end
 .%
 
 uebertrage([], DLQ) ->
 	{[], DLQ};
 uebertrage(HBQ, DLQ) ->
 	if length(DLQ) =:= 0 ->
-		Nr1 = 0;
+		Nnr_DLQ_last = 0;
 	?Else ->
-		{Nr1, _Nachricht1} = lists:last(DLQ)
+		{Nnr_DLQ_last, _Nachricht} = lists:last(DLQ)
 	end,
 
-	[{Nr2, Nachricht2}|HBQtail] = HBQ,
-	if Nr1 =:= Nr2-1 ->
-		server:log("Nachricht " ++ integer_to_list(Nr2) ++ " jetzt in DLQ"),
-		uebertrage(HBQtail, kuerzeWennDLQZuLang(DLQ++[{Nr2, Nachricht2}]));
+	[HBQ_first|HBQtail] = HBQ,
+	{Nnr_HBQ_first, _Nachricht_HBQ_first} = HBQ_first,
+	if Nnr_DLQ_last =:= Nnr_HBQ_first-1 ->
+		server:log("Nachricht " ++ integer_to_list(Nnr_HBQ_first) ++ " jetzt in DLQ"),
+		uebertrage(HBQtail, kuerzeWennDLQZuLang(DLQ++[HBQ_first]));
 	?Else ->
 		{HBQ, DLQ}
 	end
 .%
 
 erzeugeFehlernachricht(HBQ, DLQ) ->
-	[{Nr,_Nachricht}|_T] = HBQ,
-	if length(DLQ) =:= 0 ->
-		Nr1 = 0;
-	?Else ->
-		{Nr1, _Nachricht1} = lists:last(DLQ)
-	end,
-	Fehlernachricht = io_lib:format("Fehlernachricht ~w bis ~w.", [Nr1, Nr - 1]),
-	uebertrage(HBQ,	kuerzeWennDLQZuLang(DLQ++[{Nr - 1, Fehlernachricht}]))
+	[{Nnr_HBQ_first,_Nachricht}|_T] = HBQ,
+	%if length(DLQ) =:= 0 ->
+	%	Nr1 = 0;
+	%?Else ->
+	%	{Nr1, _Nachricht1} = lists:last(DLQ)
+	%end,
+	Fehlernachricht_text = io_lib:format("Fehlernachricht ~w bis ~w.", [letzte_nnr(DLQ), Nnr_HBQ_first - 1]),
+	Nr = Nnr_HBQ_first - 1,
+	Fehlernachricht = {Nr, {Fehlernachricht_text, 0, 0}},
+	uebertrage(HBQ,	kuerzeWennDLQZuLang(DLQ++[Fehlernachricht]))
+.%
+
+letzte_nnr([]) ->
+	0;
+letzte_nnr(Q) ->
+	{Nnr, _} = lists:last(Q),
+	Nnr
 .%
 
 kuerzeWennDLQZuLang(List) ->
