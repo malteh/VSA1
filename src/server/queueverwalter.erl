@@ -31,7 +31,7 @@ nachricht_einfuegen(Nnr, Text, Struktur) ->
 	{HBQ, DLQ} = Struktur,
 	Eingang_HBQ = tools:now_seconds(),
 	Eingang_DLQ = 0,
-	Elem = {Nnr, {Text, Eingang_HBQ, Eingang_DLQ}},
+	Elem = {Nnr, {Text ++ "Eingang HBQ:" ++ tools:time_string(), Eingang_HBQ, Eingang_DLQ}},
 	HBQ_neu = werkzeug:pushSL(HBQ, Elem),
 	hbq_pruefen({HBQ_neu, DLQ})
 .%
