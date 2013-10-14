@@ -34,7 +34,7 @@ start(Name) ->
 .%
 
 loop(Name, Server, Nachrichtennummern) ->
-	Neue_nummern = redakteur:start(Name, Server, anzahl()),
+	Neue_nummern = redakteur:start(Name, Server, anzahl(), [], sendeintervall()),
 	leser:start(Name, Server, Nachrichtennummern ++ Neue_nummern)
 .%
 
@@ -53,7 +53,7 @@ server_pid() ->
 .%
 
 log(Prefix, Text) ->
-	TextNewline = io_lib:format("~s:~s~n", [Prefix, Text]),
+	TextNewline = io_lib:format("~s~n", [Text]),
 	Logfile = io_lib:format("../logs/~s.log", [Prefix]),
 	werkzeug:logging(Logfile, TextNewline)
 .%
@@ -62,4 +62,10 @@ anzahl() ->
 	ConfigList = tools:read_config(?Config),
 	{ok, Anzahl} = werkzeug:get_config_value(anzahl, ConfigList),
 	Anzahl
+.%
+
+sendeintervall() ->
+	ConfigList = tools:read_config(?Config),
+	{ok, Sendeintervall} = werkzeug:get_config_value(sendeintervall, ConfigList),
+	Sendeintervall * 1000
 .%

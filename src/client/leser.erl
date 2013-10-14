@@ -12,10 +12,9 @@ alle_nachrichten_holen(Name, _, _, true) ->
 alle_nachrichten_holen(Name, Server, Bekannte_nachrichten, false) ->
 	% getmessages
 	Server ! {getmessages, self()},
-	client:log(Name, "getmessages gesendet"),
 	receive
 		{reply, Number1, Nachricht, Terminated} ->
-			Logtext = "reply" ++ integer_to_list(Number1) ++ Nachricht ++ atom_to_list(Terminated),
+			Logtext = Nachricht ++ atom_to_list(Terminated),
 			Ist_bekannt = tools:contains(Bekannte_nachrichten, Number1),
 			if Ist_bekannt ->
 				client:log(Name, Logtext ++ "*****");

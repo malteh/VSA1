@@ -1,5 +1,6 @@
 -module(tools).
--export([now_milliseconds/0, now_seconds/0, read_config/1, contains/2, time_string/0, date_string/0, date_time_string/0]).
+-export([now_milliseconds/0, now_seconds/0, read_config/1, contains/2, time_string/0, date_string/0, date_time_string/0, pushSL/2, max_in_list/1]).
+-define(Else, true).
 
 now_milliseconds() ->
 	K = 1000,
@@ -35,3 +36,25 @@ date_string() ->
 date_time_string() ->
 	date_string() ++ "_" ++ time_string()
 .%
+
+max_in_list([H|T]) ->
+	Max = H,
+	max_in_list(Max, T)
+.%
+max_in_list(Max, []) ->
+	Max;
+max_in_list(Max, [H|T]) ->
+	if (Max < H) ->
+		Max_neu = H;
+	?Else ->
+		Max_neu = Max
+	end,
+	max_in_list(Max_neu, T)
+.%
+
+pushSL([{ElemNr, Elem}|TSL], {NElemNr,NElem}) when ElemNr < NElemNr ->
+	[{ElemNr, Elem}|pushSL(TSL,{NElemNr,NElem})];
+pushSL([{ElemNr, Elem}|TSL], {NElemNr,NElem}) when ElemNr >= NElemNr ->
+	[{NElemNr,NElem},{ElemNr, Elem}|TSL];
+pushSL([], {NElemNr,NElem}) ->
+	[{NElemNr,NElem}].

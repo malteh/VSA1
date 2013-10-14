@@ -12,13 +12,13 @@ naechste_nachricht(Nnr, {_, DLQ}) ->
 naechste_nachricht(Nnr, []) ->
 	{Nnr, "Nichts da", true};
 naechste_nachricht(Nnr, DLQ) ->
-	[{FirstDLQ, {Text, _EHBQ, _EDLQ}}|TDLQ] = DLQ,
+	[{FirstDLQ, Text}|TDLQ] = DLQ,
 	if FirstDLQ > Nnr ->
 		Flag = (TDLQ=:=[]),
 	%	%if TDLQ=:=[] ->
 	%	%	Flag = false;
 	%	%?Else ->
-	%	%	[{Nr,_Nachr}|_Tail] = TDLQ,
+	%	%	[{Nr,_Text}|_Tail] = TDLQ,
 	%	%	Flag = (Nr =:= FirstDLQ+1)
 	%	%end,
 		{FirstDLQ, Text, Flag};
@@ -29,10 +29,8 @@ naechste_nachricht(Nnr, DLQ) ->
 
 nachricht_einfuegen(Nnr, Text, Struktur) ->
 	{HBQ, DLQ} = Struktur,
-	Eingang_HBQ = tools:now_seconds(),
-	Eingang_DLQ = 0,
-	Elem = {Nnr, {Text ++ "Eingang HBQ:" ++ tools:time_string(), Eingang_HBQ, Eingang_DLQ}},
-	HBQ_neu = werkzeug:pushSL(HBQ, Elem),
+	Elem = {Nnr, Text ++ "Eingang HBQ:" ++ tools:time_string()},
+	HBQ_neu = tools:pushSL(HBQ, Elem),
 	hbq_pruefen({HBQ_neu, DLQ})
 .%
 
@@ -41,7 +39,7 @@ hbq_pruefen(Struktur) ->
 	
 	MaxDLQsize = dlqlimit(),
 	if (length(HBQ) > MaxDLQsize/2) ->
-		erzeugeFehlernachricht(HBQ, DLQ);
+		erzeuge_fehlernachricht(HBQ, DLQ);
 	?Else ->
 		uebertrage(HBQ, DLQ)
 	end
@@ -53,29 +51,30 @@ uebertrage(HBQ, DLQ) ->
 	if length(DLQ) =:= 0 ->
 		Nnr_DLQ_last = 0;
 	?Else ->
-		{Nnr_DLQ_last, _Nachricht} = lists:last(DLQ)
+		{Nnr_DLQ_last, _Text} = lists:last(DLQ)
 	end,
 
 	[HBQ_first|HBQtail] = HBQ,
-	{Nnr_HBQ_first, _Nachricht_HBQ_first} = HBQ_first,
+	{Nnr_HBQ_first, Text_HBQ_first} = HBQ_first,
+	Text_neu = Text_HBQ_first ++ "; Eingang DLQ:" ++ tools:time_string(),
+	HBQ_first_neu = {Nnr_HBQ_first, Text_neu},
 	if Nnr_DLQ_last =:= Nnr_HBQ_first-1 ->
-		server:log("Nachricht " ++ integer_to_list(Nnr_HBQ_first) ++ " jetzt in DLQ"),
-		uebertrage(HBQtail, kuerzeWennDLQZuLang(DLQ++[HBQ_first]));
+		uebertrage(HBQtail, kuerzeWennDLQZuLang(DLQ++[HBQ_first_neu]));
 	?Else ->
 		{HBQ, DLQ}
 	end
 .%
 
-erzeugeFehlernachricht(HBQ, DLQ) ->
-	[{Nnr_HBQ_first,_Nachricht}|_T] = HBQ,
+erzeuge_fehlernachricht(HBQ, DLQ) ->
+	[{Nnr_HBQ_first,_Text}|_T] = HBQ,
 	%if length(DLQ) =:= 0 ->
 	%	Nr1 = 0;
 	%?Else ->
-	%	{Nr1, _Nachricht1} = lists:last(DLQ)
+	%	{Nr1, _Text1} = lists:last(DLQ)
 	%end,
-	Fehlernachricht_text = io_lib:format("Fehlernachricht ~w bis ~w.", [letzte_nnr(DLQ), Nnr_HBQ_first - 1]),
+	Fehlernachricht_text = io_lib:format("***Fehlernachricht fuer Nachrichtennummern ~w bis ~w. ", [letzte_nnr(DLQ)+1, Nnr_HBQ_first - 1]),
 	Nr = Nnr_HBQ_first - 1,
-	Fehlernachricht = {Nr, {Fehlernachricht_text, 0, 0}},
+	Fehlernachricht = {Nr, Fehlernachricht_text ++ tools:time_string()},
 	uebertrage(HBQ,	kuerzeWennDLQZuLang(DLQ++[Fehlernachricht]))
 .%
 
@@ -86,6 +85,9 @@ letzte_nnr(Q) ->
 	Nnr
 .%
 
+%kuerzeWennDLQZuLang(List) ->
+%	List
+%.%
 kuerzeWennDLQZuLang(List) ->
 	MaxDLQsize = dlqlimit(),
 	kuerzeWennDLQZuLang(List, MaxDLQsize).
@@ -109,17 +111,40 @@ dlqlimit() ->
 
 test() ->
 	test_naechste_nachricht(),
+	test_erzeuge_fehlernachricht(),
+	test_nachricht_einfuegen(),
 	io:format("ok~n",[]),
 	halt()
 .%
 
+test_nachricht_einfuegen() ->
+	S = erzeuge_struktur(),
+	T1 = nachricht_einfuegen(1, "", S),
+	{[], [{1,_}]} = T1,
+	
+	T2 = nachricht_einfuegen(3, "", T1),
+	{[{3,_}], [{1,_}]} = T2,
+	
+	T3 = nachricht_einfuegen(5, "", T2),
+	{[{3,_}, {5,_}], [{1,_}]} = T3,
+	
+	T4 = nachricht_einfuegen(4, "", T3),
+	{[], [{1, _}, {2, _}, {3, _}, {4, _}, {5, _}]} = T4
+.%
+
+test_erzeuge_fehlernachricht() ->
+	HBQ = [{5, ""}, {6, ""}],
+	DLQ = [{1, ""}, {2, ""}],
+	{[], [{1, ""}, {2, ""}, {4, _}, {5, _}, {6, _}]} = erzeuge_fehlernachricht(HBQ, DLQ)
+.%
+
 test_naechste_nachricht() ->
 	HBQ = [],
-	DLQ = [{1, {"", 1, 2}}, {2, {"", 1, 2}}, {3, {"", 1, 2}}, {4, {"", 1, 2}}, {5, {"", 1, 2}}, {6, {"", 1, 2}}],
+	DLQ = [{1, ""}, {2, ""}, {3, ""}, {4, ""}, {5, ""}, {6, ""}],
 	{1, _, false} = naechste_nachricht( 0, {HBQ, DLQ}),
 	{2, _, false} = naechste_nachricht( 1, {HBQ, DLQ}),
 	{3, _, false} = naechste_nachricht( 2, {HBQ, DLQ}),
 	{4, _, false} = naechste_nachricht( 3, {HBQ, DLQ}),
 	{5, _, false} = naechste_nachricht( 4, {HBQ, DLQ}),
-	{6, _, true} = naechste_nachricht( 5, {HBQ, DLQ})
+	{6, _, true } = naechste_nachricht( 5, {HBQ, DLQ})
 .%
