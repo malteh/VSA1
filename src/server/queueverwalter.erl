@@ -37,11 +37,17 @@ nachricht_einfuegen(Nnr, Text, Struktur) ->
 hbq_pruefen(Struktur) ->
 	{HBQ, DLQ} = Struktur,
 	
+	%if (length(HBQ) > MaxDLQsize/2) ->
+	%	erzeuge_fehlernachricht(HBQ, DLQ);
+	%?Else ->
+	%	uebertrage(HBQ, DLQ)
+	%end
+	
 	MaxDLQsize = dlqlimit(),
 	if (length(HBQ) > MaxDLQsize/2) ->
-		erzeuge_fehlernachricht(HBQ, DLQ);
+		uebertrage(HBQ, DLQ);
 	?Else ->
-		uebertrage(HBQ, DLQ)
+		Struktur
 	end
 .%
 
@@ -59,10 +65,13 @@ uebertrage(HBQ, DLQ) ->
 	Text_neu = Text_HBQ_first ++ "; Eingang DLQ:" ++ tools:time_string(),
 	HBQ_first_neu = {Nnr_HBQ_first, Text_neu},
 	if Nnr_DLQ_last =:= Nnr_HBQ_first-1 ->
-		uebertrage(HBQtail, kuerzeWennDLQZuLang(DLQ++[HBQ_first_neu]));
+		server:log(integer_to_list(Nnr_HBQ_first) ++ " jetzt in DLQ"),
+		A = uebertrage(HBQtail, kuerzeWennDLQZuLang(DLQ++[HBQ_first_neu]));
 	?Else ->
-		{HBQ, DLQ}
-	end
+		A = erzeuge_fehlernachricht(HBQ, DLQ)
+		%{HBQ, DLQ}
+	end,
+	hbq_pruefen(A)
 .%
 
 erzeuge_fehlernachricht(HBQ, DLQ) ->
@@ -73,9 +82,10 @@ erzeuge_fehlernachricht(HBQ, DLQ) ->
 	%	{Nr1, _Text1} = lists:last(DLQ)
 	%end,
 	Fehlernachricht_text = io_lib:format("***Fehlernachricht fuer Nachrichtennummern ~w bis ~w. ", [letzte_nnr(DLQ)+1, Nnr_HBQ_first - 1]),
+	server:log(Fehlernachricht_text),
 	Nr = Nnr_HBQ_first - 1,
 	Fehlernachricht = {Nr, Fehlernachricht_text ++ tools:time_string()},
-	uebertrage(HBQ,	kuerzeWennDLQZuLang(DLQ++[Fehlernachricht]))
+	{HBQ,	kuerzeWennDLQZuLang(DLQ++[Fehlernachricht])}
 .%
 
 letzte_nnr([]) ->

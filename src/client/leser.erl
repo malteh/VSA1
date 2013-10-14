@@ -3,12 +3,14 @@
 -define(Else, true).
 
 start(Name, Server, Bekannte_nachrichten) ->
-	client:log(Name, " ist jetzt im Lesermodus"),
+	%client:log(Name, " ist jetzt im Lesermodus"),
 	alle_nachrichten_holen(Name, Server, Bekannte_nachrichten, false)
 .%
 
 alle_nachrichten_holen(Name, _, _, true) ->
-	client:log(Name, " Server hat keine Nachrichten mehr");
+	_ = Name,
+	%client:log(Name, " Server hat keine Nachrichten mehr"),
+	true;
 alle_nachrichten_holen(Name, Server, Bekannte_nachrichten, false) ->
 	% getmessages
 	Server ! {getmessages, self()},

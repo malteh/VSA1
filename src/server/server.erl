@@ -9,7 +9,7 @@
 start() ->
 	register(server:name(), self()),
 	global:register_name(server:name(), self()),
-	log("Server gestartet"),
+	log("Server Startzeit: " ++ tools:time_string() ++ " mit PID " ++ io_lib:format("~p", [self()])),
 	Queuestruktur = queueverwalter:erzeuge_struktur(),
 	Clientliste = clientverwalter:erzeuge_liste(),
 	loop(nnr_erhoehen(0), Queuestruktur, Clientliste)	
@@ -18,24 +18,22 @@ start() ->
 loop(Nnr, Queuestruktur, Clientliste) ->
 	receive
 		{getmessages, ClientPID} ->
-			log("getmessages empfangen"),
+			%log("getmessages empfangen"),
 			Letzte_nnr = clientverwalter:letzte_nnr(ClientPID, Clientliste),
-			log("Letzte:"++integer_to_list(Letzte_nnr)),
+			%log("Letzte:"++integer_to_list(Letzte_nnr)),
 			{Nnr_neu, Nachricht, Terminated} = queueverwalter:naechste_nachricht(Letzte_nnr, Queuestruktur),
-			log("neu:"++integer_to_list(Nnr_neu)),
+			%log("neu:"++integer_to_list(Nnr_neu)),
 			ClientPID ! {reply, Nnr_neu, Nachricht, Terminated},
 			Clientliste_neu = clientverwalter:aktualisiere(ClientPID, Nnr_neu, Clientliste),
-			{_, DLQ } = Queuestruktur,
-			log("########### DLQ:" ++ integer_to_list(length(DLQ))),
 			loop(Nnr, Queuestruktur, Clientliste_neu);
 		{dropmessage, {Text, Number}} ->
-			log("dropmessage: " ++ Text),
+			%log("dropmessage: " ++ Text),
 			Queuestruktur_neu = queueverwalter:nachricht_einfuegen(Number, Text, Queuestruktur),
 			loop(Nnr, Queuestruktur_neu, Clientliste);
 		{getmsgid, ClientPID} ->
-			log("getmsgid empfangen"),
+			%log("getmsgid empfangen"),
 			ClientPID ! {nid, Nnr},
-			log("getmsgid: " ++ integer_to_list(Nnr)),
+			log("Nachrichtennummer " ++ integer_to_list(Nnr) ++ " an " ++ io_lib:format("~p", [ClientPID]) ++ " gesendet"),
 			loop(nnr_erhoehen(Nnr), Queuestruktur, Clientliste);
 		stop ->
 			stop()
