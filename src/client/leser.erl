@@ -9,20 +9,23 @@ start(Name, Server, Bekannte_nachrichten) ->
 
 alle_nachrichten_holen(Name, _, _, true) ->
 	_ = Name,
-	%client:log(Name, " Server hat keine Nachrichten mehr"),
+	client:log(Name, "..getmessages..Done..."),
 	true;
 alle_nachrichten_holen(Name, Server, Bekannte_nachrichten, false) ->
 	% getmessages
 	Server ! {getmessages, self()},
 	receive
+		
 		{reply, Number1, Nachricht, Terminated} ->
-			Logtext = Nachricht ++ atom_to_list(Terminated),
 			Ist_bekannt = tools:contains(Bekannte_nachrichten, Number1),
 			if Ist_bekannt ->
-				client:log(Name, Logtext ++ "*****");
+				client:log(Name, Nachricht ++ "*****");
 			?Else ->
-				client:log(Name, Logtext)
-			end
+				client:log(Name, Nachricht)
+			end;
+		stop -> 
+			Terminated = true,
+			halt()
 	end,
 	alle_nachrichten_holen(Name, Server, Bekannte_nachrichten, Terminated)
 .%

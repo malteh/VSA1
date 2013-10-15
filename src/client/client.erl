@@ -19,9 +19,9 @@ start_one() ->
 
 %======================================
 
-start_multi(0) -> io:format("asd",[]);%halt();
+start_multi(0) -> false;
 start_multi(Number) ->
-	Name = "Client" ++ integer_to_list(Number),
+	Name = integer_to_list(Number) ++ "-client",
 	spawn(fun() -> start(Name) end),
 	start_multi(Number-1)
 .%
@@ -29,18 +29,20 @@ start_multi(Number) ->
 start(Name) ->
 	log(Name, "Client gestartet"),
 	Server = server_pid(),
+	timer:send_after(lifetime() * 1000, stop),
 	loop(Name, Server, []),
 	stop(Name)
 .%
 
 loop(Name, Server, Nachrichtennummern) ->
 	Neue_nummern = redakteur:start(Name, Server, anzahl(), [], sendeintervall()),
-	leser:start(Name, Server, Nachrichtennummern ++ Neue_nummern)
+	leser:start(Name, Server, Nachrichtennummern ++ Neue_nummern),
+	loop(Name, Server, Nachrichtennummern)
 .%
 
 stop(Name) ->
 	log(Name, "Client gestoppt"),
-	werkzeug:logstop()
+	halt()
 .%
 
 server_pid() ->
@@ -59,13 +61,16 @@ log(Prefix, Text) ->
 .%
 
 anzahl() ->
-	ConfigList = tools:read_config(?Config),
-	{ok, Anzahl} = werkzeug:get_config_value(anzahl, ConfigList),
+	{ok, Anzahl} = werkzeug:get_config_value(anzahl, tools:read_config(?Config)),
 	Anzahl
 .%
 
+lifetime() ->
+	{ok, Lifetime} = werkzeug:get_config_value(lifetime, tools:read_config(?Config)),
+	Lifetime
+.%
+
 sendeintervall() ->
-	ConfigList = tools:read_config(?Config),
-	{ok, Sendeintervall} = werkzeug:get_config_value(sendeintervall, ConfigList),
+	{ok, Sendeintervall} = werkzeug:get_config_value(sendeintervall, tools:read_config(?Config)),
 	Sendeintervall * 1000
 .%

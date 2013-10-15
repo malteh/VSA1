@@ -11,6 +11,7 @@ letzte_nnr(ClientPID, Clientliste) ->
 	{_, LetzteNr, Timeout} = search_PID(ClientPID, Clientliste),
 	Now = tools:now_seconds(),
 	if (Now > Timeout) ->
+		server:log(io_lib:format("Client :~w unbekannt", [ClientPID] )),
 		0;
 	?Else ->
 		LetzteNr

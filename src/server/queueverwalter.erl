@@ -30,19 +30,23 @@ naechste_nachricht(Nnr, DLQ) ->
 nachricht_einfuegen(Nnr, Text, Struktur) ->
 	{HBQ, DLQ} = Struktur,
 	Elem = {Nnr, Text ++ "Eingang HBQ:" ++ tools:time_string()},
-	HBQ_neu = tools:pushSL(HBQ, Elem),
-	hbq_pruefen({HBQ_neu, DLQ})
+	
+	if length(DLQ) =:= 0 ->
+		Nnr_DLQ_last = 0;
+	?Else ->
+		{Nnr_DLQ_last, _Text} = lists:last(DLQ)
+	end,
+	
+	if (Nnr > Nnr_DLQ_last) ->
+		HBQ_neu = tools:pushSL(HBQ, Elem),
+		hbq_pruefen({HBQ_neu, DLQ});
+	?Else ->
+		Struktur
+	end
 .%
 
 hbq_pruefen(Struktur) ->
 	{HBQ, DLQ} = Struktur,
-	
-	%if (length(HBQ) > MaxDLQsize/2) ->
-	%	erzeuge_fehlernachricht(HBQ, DLQ);
-	%?Else ->
-	%	uebertrage(HBQ, DLQ)
-	%end
-	
 	MaxDLQsize = dlqlimit(),
 	if (length(HBQ) > MaxDLQsize/2) ->
 		uebertrage(HBQ, DLQ);
@@ -57,35 +61,30 @@ uebertrage(HBQ, DLQ) ->
 	if length(DLQ) =:= 0 ->
 		Nnr_DLQ_last = 0;
 	?Else ->
-		{Nnr_DLQ_last, _Text} = lists:last(DLQ)
+		Nnr_DLQ_last = letzte_nnr(DLQ)
 	end,
 
 	[HBQ_first|HBQtail] = HBQ,
 	{Nnr_HBQ_first, Text_HBQ_first} = HBQ_first,
-	Text_neu = Text_HBQ_first ++ "; Eingang DLQ:" ++ tools:time_string(),
-	HBQ_first_neu = {Nnr_HBQ_first, Text_neu},
 	if Nnr_DLQ_last =:= Nnr_HBQ_first-1 ->
+		Text_neu = Text_HBQ_first ++ "; Eingang DLQ:" ++ tools:time_string(),
+		HBQ_first_neu = {Nnr_HBQ_first, Text_neu},
 		server:log(integer_to_list(Nnr_HBQ_first) ++ " jetzt in DLQ"),
-		A = uebertrage(HBQtail, kuerzeWennDLQZuLang(DLQ++[HBQ_first_neu]));
+		%A = {HBQtail, kuerze_wenn_zu_lang(DLQ++[HBQ_first_neu])};
+		A = uebertrage(HBQtail, kuerze_wenn_zu_lang(DLQ++[HBQ_first_neu]));
 	?Else ->
 		A = erzeuge_fehlernachricht(HBQ, DLQ)
-		%{HBQ, DLQ}
 	end,
 	hbq_pruefen(A)
 .%
 
 erzeuge_fehlernachricht(HBQ, DLQ) ->
 	[{Nnr_HBQ_first,_Text}|_T] = HBQ,
-	%if length(DLQ) =:= 0 ->
-	%	Nr1 = 0;
-	%?Else ->
-	%	{Nr1, _Text1} = lists:last(DLQ)
-	%end,
 	Fehlernachricht_text = io_lib:format("***Fehlernachricht fuer Nachrichtennummern ~w bis ~w. ", [letzte_nnr(DLQ)+1, Nnr_HBQ_first - 1]),
 	server:log(Fehlernachricht_text),
 	Nr = Nnr_HBQ_first - 1,
 	Fehlernachricht = {Nr, Fehlernachricht_text ++ tools:time_string()},
-	{HBQ,	kuerzeWennDLQZuLang(DLQ++[Fehlernachricht])}
+	{HBQ,	kuerze_wenn_zu_lang(DLQ++[Fehlernachricht])}
 .%
 
 letzte_nnr([]) ->
@@ -95,18 +94,15 @@ letzte_nnr(Q) ->
 	Nnr
 .%
 
-%kuerzeWennDLQZuLang(List) ->
-%	List
-%.%
-kuerzeWennDLQZuLang(List) ->
+kuerze_wenn_zu_lang(List) ->
 	MaxDLQsize = dlqlimit(),
-	kuerzeWennDLQZuLang(List, MaxDLQsize).
-kuerzeWennDLQZuLang([], _Max) ->
+	kuerze_wenn_zu_lang(List, MaxDLQsize).
+kuerze_wenn_zu_lang([], _Max) ->
 	[];
-kuerzeWennDLQZuLang(DLQ, Max) ->
+kuerze_wenn_zu_lang(DLQ, Max) ->
 	if length(DLQ) > Max ->
 		[_H|T]=DLQ,
-		kuerzeWennDLQZuLang(T, Max);
+		kuerze_wenn_zu_lang(T, Max);
 	?Else ->
 		DLQ
 	end

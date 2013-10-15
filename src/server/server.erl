@@ -7,35 +7,34 @@
 
 %E: start server
 start() ->
-	register(server:name(), self()),
-	global:register_name(server:name(), self()),
+	register(name(), self()),
+	global:register_name(name(), self()),
 	log("Server Startzeit: " ++ tools:time_string() ++ " mit PID " ++ io_lib:format("~p", [self()])),
 	Queuestruktur = queueverwalter:erzeuge_struktur(),
 	Clientliste = clientverwalter:erzeuge_liste(),
-	loop(nnr_erhoehen(0), Queuestruktur, Clientliste)	
+	loop(nnr_erhoehen(0), Queuestruktur, Clientliste, laufzeit())	
 .%
 
-loop(Nnr, Queuestruktur, Clientliste) ->
+loop(Nnr, Queuestruktur, Clientliste, Laufzeit) ->
 	receive
 		{getmessages, ClientPID} ->
-			%log("getmessages empfangen"),
 			Letzte_nnr = clientverwalter:letzte_nnr(ClientPID, Clientliste),
-			%log("Letzte:"++integer_to_list(Letzte_nnr)),
 			{Nnr_neu, Nachricht, Terminated} = queueverwalter:naechste_nachricht(Letzte_nnr, Queuestruktur),
-			%log("neu:"++integer_to_list(Nnr_neu)),
 			ClientPID ! {reply, Nnr_neu, Nachricht, Terminated},
 			Clientliste_neu = clientverwalter:aktualisiere(ClientPID, Nnr_neu, Clientliste),
-			loop(Nnr, Queuestruktur, Clientliste_neu);
+			log(Nachricht ++ "-getmessages"),
+			loop(Nnr, Queuestruktur, Clientliste_neu, Laufzeit);
 		{dropmessage, {Text, Number}} ->
-			%log("dropmessage: " ++ Text),
+			log(Text ++ "-dropmessage"),
 			Queuestruktur_neu = queueverwalter:nachricht_einfuegen(Number, Text, Queuestruktur),
-			loop(Nnr, Queuestruktur_neu, Clientliste);
+			loop(Nnr, Queuestruktur_neu, Clientliste, Laufzeit);
 		{getmsgid, ClientPID} ->
-			%log("getmsgid empfangen"),
 			ClientPID ! {nid, Nnr},
 			log("Nachrichtennummer " ++ integer_to_list(Nnr) ++ " an " ++ io_lib:format("~p", [ClientPID]) ++ " gesendet"),
-			loop(nnr_erhoehen(Nnr), Queuestruktur, Clientliste);
+			loop(nnr_erhoehen(Nnr), Queuestruktur, Clientliste, Laufzeit);
 		stop ->
+			stop()
+		after Laufzeit ->
 			stop()
 	end
 .%
@@ -48,7 +47,8 @@ nnr_erhoehen(Nummer) ->
 
 stop() ->
 	log("Server gestoppt"),
-	werkzeug:logstop()
+	werkzeug:logstop(),
+	halt()
 .%
 
 %E:
@@ -65,6 +65,11 @@ config_file() ->
 name() ->
 	{ok, Name} = werkzeug:get_config_value(servername, tools:read_config(?Config)),
 	Name
+.%
+
+laufzeit() ->
+	{ok, Laufzeit} = werkzeug:get_config_value(laufzeit, tools:read_config(?Config)),
+	Laufzeit * 1000
 .%
 
 test() ->
